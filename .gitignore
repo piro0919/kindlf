@@ -31,6 +31,8 @@
 /node_modules
 /out/
 /public/books.json
+/public/sw.js
+/public/sw.js.map
 next-env.d.ts
 npm-debug.log*
 yarn-debug.log*
