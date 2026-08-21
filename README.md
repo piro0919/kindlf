@@ -1,8 +1,8 @@
 # Kindlf
 
 Kindle plus shelf. A small PWA that lays out your Kindle library the way you
-want it. Add it to the iPad home screen and it opens full screen, with no
-Safari toolbar in the way.
+want it. Install it to the home screen and it opens full screen, with no
+browser chrome in the way.
 
 The Kindle app changed its library UI and became harder to read. This does not
 try to fix that app, and it does not try to wrap the Kindle web reader either
@@ -21,6 +21,8 @@ npm install
 npm run dev
 ```
 
+Anything that runs Node and Python works — macOS, Windows, Linux.
+
 Next.js 16, React 19, TypeScript, Tailwind 4. Put `books.json` in `public/` and
 the shelf reads it; without one it falls back to `public/books.example.json`, so
 a fresh clone shows something straight away.
@@ -28,10 +30,12 @@ a fresh clone shows something straight away.
 `npm run build` is pinned to `--webpack`. Next 16 builds with Turbopack by
 default, and that collides with the webpack config Serwist installs.
 
-On the iPad, open the site in Safari and use **Share → Add to Home Screen**, or
-press the install button in the header. The manifest declares
-`display: standalone`, so launching from the icon gives you no toolbar. On
-iOS 26, leave the "Open as Web App" toggle on.
+Press the install button in the header. On Chrome, Edge and most Android
+browsers that opens the browser's own install prompt; on iOS and iPadOS, where
+no such prompt exists, it walks you through **Share → Add to Home Screen**
+instead. Either way the manifest declares `display: standalone`, so launching
+from the icon gives you no toolbar. On iOS 26, leave the "Open as Web App"
+toggle on.
 
 Service workers need HTTPS anywhere other than `localhost`, so offline support
 only kicks in on a deployed build.
@@ -101,21 +105,24 @@ local and let the browser hold your copy instead.
 python3 scripts/build-icons.py
 ```
 
-macOS ships no SVG rasteriser that preserves transparency, so rather than pull
-in a dependency the script writes the PNG pixels directly.
+Python only, no image library. macOS in particular ships no SVG rasteriser that
+preserves transparency, so rather than pull in a dependency for one platform the
+script writes the PNG pixels directly.
 
 ## Known gaps
 
 - **There is no way to load your library from the device yet.** The importer
-  runs on a Mac and writes into `public/`. Picking a `books.json` from the
-  iPad and storing it in IndexedDB is the next thing to build.
+  writes into `public/`, which only helps while you run it locally. Picking a
+  `books.json` through a file input and storing it in IndexedDB is the next
+  thing to build.
 - Nothing follows your new purchases. The disclosure request is a one-time
   snapshot; ask again and you wait another month.
 - Search, sorting options and series grouping are not in the UI. Series
   grouping by title exists in the history, at `Rebuild the shelf on Next.js`.
 - Opening a book points at `https://read.amazon.co.jp/?asin={ASIN}`. Whether
-  that reaches the Kindle app on an iPad or just opens the web reader is
-  untested — swap `openUrl` in `src/lib/books.ts` if it misbehaves.
+  that hands off to an installed Kindle app or just opens the web reader has
+  not been checked on any platform — swap `openUrl` in `src/lib/books.ts` if it
+  misbehaves.
 - The importer only knows about the `.co.jp` disclosure layout. Other
   marketplaces may name things differently.
 
