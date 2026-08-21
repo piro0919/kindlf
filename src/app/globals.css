@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #faf8f5;
+  --color-fg: #1c1a17;
+  --color-muted: #8a8279;
+  --color-line: #e6e0d8;
+  --color-accent: #b4642a;
+}
+
+@media (prefers-color-scheme: dark) {
+  @theme {
+    --color-bg: #16151a;
+    --color-fg: #ece9e4;
+    --color-muted: #8d8781;
+    --color-line: #2c2a30;
+    --color-accent: #d98f4f;
+  }
+}
+
+@layer base {
+  body {
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family:
+      -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* 2000冊を一気に置くので、画面外はレイアウトも省かせる */
+  main > * {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 280px;
+  }
+}
