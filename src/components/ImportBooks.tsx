@@ -11,7 +11,7 @@ type Status =
   | { kind: "error"; message: string };
 
 /** 端末に取り込む。ファイルはこの中だけで読み、どこにも送らない */
-export function ImportBooks() {
+export function ImportBooks({ reloadKey = 0 }: { reloadKey?: number }) {
   const [count, setCount] = useState<number | null>(null);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [dragging, setDragging] = useState(false);
@@ -25,7 +25,7 @@ export function ImportBooks() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   async function handle(file: File) {
     setStatus({ kind: "reading" });
