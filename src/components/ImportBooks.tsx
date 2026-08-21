@@ -3,12 +3,25 @@
 import { useEffect, useRef, useState } from "react";
 import { MdOutlineFileUpload } from "react-icons/md";
 import { clearBooks, parseBooks, saveBooks, storedBooks } from "@/lib/books";
+import { booksFromZip } from "@/lib/disclosure";
 
 type Status =
   | { kind: "idle" }
-  | { kind: "reading" }
+  | { kind: "reading"; percent: null | number }
   | { kind: "done"; count: number }
   | { kind: "error"; message: string };
+
+/** 手元で作った books.json も引き続き受ける */
+async function readJson(file: File): Promise<unknown> {
+  const text = await file.text();
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    // 解析器の生の文言は読み手の役に立たない
+    throw new Error("JSON として読めませんでした。ファイルを確かめてください");
+  }
+}
 
 /** 端末に取り込む。ファイルはこの中だけで読み、どこにも送らない */
 export function ImportBooks({ reloadKey = 0 }: { reloadKey?: number }) {
@@ -28,17 +41,20 @@ export function ImportBooks({ reloadKey = 0 }: { reloadKey?: number }) {
   }, [reloadKey]);
 
   async function handle(file: File) {
-    setStatus({ kind: "reading" });
+    setStatus({ kind: "reading", percent: null });
     try {
-      const text = await file.text();
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(text);
-      } catch {
-        // 解析器の生の文言は読み手の役に立たない
-        throw new Error("JSON として読めませんでした。ファイルを確かめてください");
-      }
-      const books = parseBooks(parsed);
+      const isZip =
+        file.name.toLowerCase().endsWith(".zip") || file.type.includes("zip");
+
+      const books = isZip
+        ? await booksFromZip(file, (done, total) =>
+            setStatus({
+              kind: "reading",
+              percent: Math.round((done / total) * 100),
+            }),
+          )
+        : parseBooks(await readJson(file));
+
       await saveBooks(books);
       setCount(books.length);
       setStatus({ kind: "done", count: books.length });
@@ -89,7 +105,7 @@ export function ImportBooks({ reloadKey = 0 }: { reloadKey?: number }) {
           <input
             ref={input}
             type="file"
-            accept="application/json,.json"
+            accept=".zip,application/zip,.json,application/json"
             className="sr-only"
             onChange={(e) => {
               const file = e.target.files?.[0];
@@ -98,7 +114,11 @@ export function ImportBooks({ reloadKey = 0 }: { reloadKey?: number }) {
           />
           <MdOutlineFileUpload className="text-2xl text-muted" />
           <span className="text-sm font-bold">
-            {status.kind === "reading" ? "読み込み中…" : "books.json を選ぶ"}
+            {status.kind === "reading"
+              ? status.percent === null
+                ? "開いています…"
+                : `読み込み中… ${status.percent}%`
+              : "Kindle.zip を選ぶ"}
           </span>
         </label>
 

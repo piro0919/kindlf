@@ -42,7 +42,14 @@ only kicks in on a deployed build.
 
 ## Your library
 
-`books.json` is an array:
+Books live in IndexedDB on whichever device you loaded them onto. Nothing is
+synced and there is no account. To put the same library on a second device,
+open the settings screen on both, press **送る** on the one that has it, and
+type the six digits it shows into the other. The two browsers connect directly;
+only the introduction goes through a public Nostr relay, and the books
+themselves never touch it.
+
+Internally a library is an array:
 
 ```json
 { "asin": "B0CVTYT329", "title": "Some Book", "author": "", "acquired": "2026-01-15T09:00:00.000Z", "lastRead": "2026-03-02T11:20:00.000Z" }
@@ -56,20 +63,28 @@ partway through both stay near the top.
 
 Amazon will hand you your own data if you ask. Go to **Request My Data**, pick
 Kindle, and wait. The confirmation screen says a month; mine landed the next
-day. Then:
+day. What arrives is `Kindle.zip` — hand that straight to the settings screen
+and the app reads it in place. 45 MB and 15,563 files went through in under a
+second, and nothing leaves the browser.
+
+Inside the zip, `Digital.Content.Ownership/` holds one JSON file per title, and
+`Digital.Content.Whispersync/whispersync.csv` records when each one was last
+open — that survives across devices, which is where `lastRead` comes from. The
+app keeps the ones where `resourceType` is `KindleEBook`, `originType` is
+`Purchase`, and `rightStatus` is `Active` — so samples, Kindle Unlimited, Prime
+Reading, dictionaries and apps all drop out. A title can carry several rights
+records, so they get deduplicated by ASIN. For me, 15,563 records came down to
+2,039 books.
+
+The same filtering also exists as a script, for when you would rather batch it
+on a computer:
 
 ```bash
 python3 scripts/import-ownership.py ~/Downloads/Kindle.zip
 ```
 
-Inside the zip, `Digital.Content.Ownership/` holds one JSON file per title, and
-`Digital.Content.Whispersync/whispersync.csv` records when each one was last
-open — that survives across devices, which is where `lastRead` comes from. The
-script keeps the ones where `resourceType` is `KindleEBook`, `originType` is
-`Purchase`, and `rightStatus` is `Active` — so samples, Kindle Unlimited, Prime
-Reading, dictionaries and apps all drop out. A title can carry several rights
-records, so they get deduplicated by ASIN. For me, 15,563 records came down to
-2,039 books.
+Keep the two in step. `src/lib/disclosure.ts` and the script must agree, or a
+`books.json` built on a computer will not match what the app produces.
 
 Nothing here scrapes Amazon. The Amazon.co.jp conditions of use say the licence
 they grant "does not include any use of data mining, robots, or similar data
@@ -117,10 +132,6 @@ script writes the PNG pixels directly.
 
 ## Known gaps
 
-- **There is no way to load your library from the device yet.** The importer
-  writes into `public/`, which only helps while you run it locally. Picking a
-  `books.json` through a file input and storing it in IndexedDB is the next
-  thing to build.
 - New purchases only show up when you file another disclosure request and
   import the result. There is no automatic sync.
 - Search, sorting options and series grouping are not in the UI. Series
