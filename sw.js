@@ -1,4 +1,4 @@
-const SHELL = 'shelf-v1';
+const SHELL = 'kindlf-v2';
 const FILES = ['./', './index.html', './styles.css', './app.js', './books.example.json', './manifest.webmanifest'];
 
 self.addEventListener('install', e => {
@@ -28,8 +28,9 @@ self.addEventListener('fetch', e => {
 
   if (url.origin !== location.origin) return;
 
-  // 自前のファイルはネットワーク優先。落ちたらキャッシュ
-  e.respondWith(fetch(e.request)
+  // 自前のファイルはネットワーク優先。落ちたらキャッシュ。
+  // no-store を付けないとブラウザのHTTPキャッシュが先に応え、更新が届かない
+  e.respondWith(fetch(e.request, { cache: 'no-store' })
     .then(res => {
       const copy = res.clone();
       caches.open(SHELL).then(c => c.put(e.request, copy));

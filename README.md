@@ -14,8 +14,12 @@ for each ASIN. Tapping a book hands off to Kindle to do the actual reading.
 ## Run it
 
 ```bash
-python3 -m http.server 8787
+python3 scripts/serve.py
 ```
+
+`python3 -m http.server` works too, but it sends no cache headers, so the
+browser keeps handing you a stale page every time you edit something. The
+script above is the same server with `Cache-Control: no-store` bolted on.
 
 Open `http://<your-mac>:8787/` in Safari on the iPad, then **Share → Add to
 Home Screen**. The manifest declares `display: standalone`, so launching from
