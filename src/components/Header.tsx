@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { display } from "@/lib/fonts";
+import { InstallButton } from "./InstallButton";
 
 export function Header() {
   return (
@@ -19,6 +20,10 @@ export function Header() {
           Kindlf
         </span>
       </Link>
+      {/* 題字の右端。出るものが無ければ何も見えない */}
+      <div className="ms-auto flex items-center gap-2">
+        <InstallButton />
+      </div>
     </header>
   );
 }
