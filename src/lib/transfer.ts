@@ -1,159 +1,105 @@
+import { joinRoom, type Room } from "trystero";
 import type { Book } from "./books";
 
 /**
  * 端末どうしを直接つないで蔵書を渡す。
  *
- * 信号のやり取りに中継サーバーを置かない。置けば接続情報が外部を通り、
- * 「蔵書は端末から出ない」という前提が崩れる。代わりに QR を2往復させる。
+ * 相手を見つけるところだけ Trystero に任せる。既定の Nostr の公開リレーに
+ * 「この合言葉の部屋にいる」とだけ書き、見つかったら端末間の直通に切り替わる。
+ * 蔵書はリレーを通らず、暗号化されて直接流れる。
  *
- *   送る側が申し出のQRを出す → 受け取る側が読む
- *   受け取る側が返事のQRを出す → 送る側が読む → つながる
- *
- * 同じ回線にいれば、経路も宅内で閉じる。
+ * 合言葉は部屋の名前と共有秘密の両方に使う。名前だけだとリレーの運営者に
+ * 鍵を復元されうる、と Trystero 自身が断っている。
  */
 
-const CHUNK = 16 * 1024; // DataChannel が一度に扱える現実的な大きさ
-const DONE = ""; // 送り終わりの合図
+const APP_ID = "kindlf";
+const NAMESPACE = "books";
 
-async function toCode(text: string): Promise<string> {
-  const bytes = new TextEncoder().encode(text);
-  const zipped = await new Response(
-    new Blob([bytes]).stream().pipeThrough(new CompressionStream("gzip")),
-  ).arrayBuffer();
-  let binary = "";
-  for (const b of new Uint8Array(zipped)) binary += String.fromCharCode(b);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+/**
+ * 相手を見つけるのに使うリレー。
+ *
+ * Trystero の既定の一覧をそのまま使うと、証明書切れ・到達不能・502 が混じり、
+ * 生きている relay.damus.io も「投稿が多すぎる」と弾いてくる。
+ * 2026-08-22 に実際に繋がったものだけを並べてある。落ちたら差し替える。
+ */
+const RELAYS = [
+  "wss://purplerelay.com",
+  "wss://relay.notoshi.win",
+  "wss://relay.nostr.place",
+  "wss://relay.mostr.pub",
+  "wss://schnorr.me",
+  "wss://staging.yabu.me",
+  "wss://nos.lol",
+  "wss://nostr.data.haus",
+];
+
+/** 打ちやすさを優先して6桁。部屋は画面を閉じれば消える */
+export function newCode(): string {
+  return [...crypto.getRandomValues(new Uint8Array(6))]
+    .map((n) => n % 10)
+    .join("");
 }
 
-async function fromCode(code: string): Promise<string> {
-  const binary = atob(code.replace(/-/g, "+").replace(/_/g, "/"));
-  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-  return new Response(
-    new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip")),
-  ).text();
-}
-
-/** ICE の収集が終わるまで待つ。途中の SDP を渡すと相手が繋ぎ先を知れない */
-function gathered(peer: RTCPeerConnection): Promise<void> {
-  if (peer.iceGatheringState === "complete") return Promise.resolve();
-
-  return new Promise((resolve) => {
-    const check = (): void => {
-      if (peer.iceGatheringState === "complete") {
-        peer.removeEventListener("icegatheringstatechange", check);
-        resolve();
-      }
-    };
-
-    peer.addEventListener("icegatheringstatechange", check);
-    // 収集が終わらない回線もある。手元の候補だけで諦める
-    setTimeout(resolve, 3000);
-  });
-}
-
-/** 宅内で完結させたいので、外の STUN は使わない */
-function newPeer(): RTCPeerConnection {
-  return new RTCPeerConnection({ iceServers: [] });
-}
-
-export type Sender = {
-  /** 受け取る側に読ませるQRの中身 */
-  offer: string;
-  /** 相手のQRを読んだら渡す。つながって送り終わるまで待つ */
-  accept: (answer: string) => Promise<void>;
-  close: () => void;
-};
-
-export async function startSending(
-  books: Book[],
-  onProgress: (sent: number, total: number) => void,
-): Promise<Sender> {
-  const peer = newPeer();
-  const channel = peer.createDataChannel("books");
-
-  channel.bufferedAmountLowThreshold = CHUNK * 4;
-
-  await peer.setLocalDescription(await peer.createOffer());
-  await gathered(peer);
-
-  return {
-    offer: await toCode(JSON.stringify(peer.localDescription)),
-    close: () => peer.close(),
-    accept: async (answer) => {
-      await peer.setRemoteDescription(JSON.parse(await fromCode(answer)));
-
-      await new Promise<void>((resolve, reject) => {
-        channel.onerror = () => reject(new Error("接続が切れました"));
-        channel.onopen = () => {
-          void (async () => {
-            const payload = JSON.stringify(books);
-
-            for (let at = 0; at < payload.length; at += CHUNK) {
-              // 送り込みすぎると詰まる。掃けるまで待つ
-              if (channel.bufferedAmount > CHUNK * 8) {
-                await new Promise<void>((next) => {
-                  channel.onbufferedamountlow = () => next();
-                });
-              }
-
-              channel.send(payload.slice(at, at + CHUNK));
-              onProgress(Math.min(at + CHUNK, payload.length), payload.length);
-            }
-
-            channel.send(DONE);
-            resolve();
-          })();
-        };
-      });
+function open(code: string): Room {
+  return joinRoom(
+    {
+      appId: APP_ID,
+      password: code,
+      relayConfig: { urls: RELAYS, redundancy: RELAYS.length },
     },
-  };
+    `shelf-${code}`,
+  );
 }
 
-export type Receiver = {
-  /** 送る側に読ませるQRの中身。相手の申し出を読んでから作られる */
-  answer: string;
-  /** 蔵書が届くまで待つ */
-  receive: () => Promise<Book[]>;
-  close: () => void;
+export type Session = { close: () => void };
+
+export type SendHandlers = {
+  onPeer: () => void;
+  onProgress: (percent: number) => void;
+  onDone: () => void;
+  onError: (message: string) => void;
 };
 
-export async function startReceiving(
-  offer: string,
-  onProgress: (received: number) => void,
-): Promise<Receiver> {
-  const peer = newPeer();
+/** 蔵書を渡す側。相手が部屋に入ってきたら送り始める */
+export function send(
+  code: string,
+  books: Book[],
+  handlers: SendHandlers,
+): Session {
+  const room = open(code);
+  const action = room.makeAction<Book[]>(NAMESPACE);
 
-  await peer.setRemoteDescription(JSON.parse(await fromCode(offer)));
-  await peer.setLocalDescription(await peer.createAnswer());
-  await gathered(peer);
+  room.onPeerJoin = (peerId) => {
+    handlers.onPeer();
 
-  return {
-    answer: await toCode(JSON.stringify(peer.localDescription)),
-    close: () => peer.close(),
-    receive: () =>
-      new Promise<Book[]>((resolve, reject) => {
-        peer.ondatachannel = ({ channel }) => {
-          const parts: string[] = [];
-          let size = 0;
-
-          channel.onmessage = ({ data }: MessageEvent<string>) => {
-            if (data === DONE) {
-              try {
-                resolve(JSON.parse(parts.join("")) as Book[]);
-              } catch {
-                reject(new Error("受け取った蔵書を読めませんでした"));
-              }
-
-              return;
-            }
-
-            parts.push(data);
-            size += data.length;
-            onProgress(size);
-          };
-
-          channel.onerror = () => reject(new Error("接続が切れました"));
-        };
-      }),
+    // 分割も流量調整も Trystero 側がやる
+    action
+      .send(books, {
+        target: peerId,
+        onProgress: (percent) => handlers.onProgress(Math.round(percent * 100)),
+      })
+      .then(() => handlers.onDone())
+      .catch(() => handlers.onError("送れませんでした"));
   };
+
+  return { close: () => void room.leave() };
+}
+
+export type ReceiveHandlers = {
+  onPeer: () => void;
+  onProgress: (percent: number) => void;
+  onDone: (books: Book[]) => void;
+};
+
+/** 蔵書を受け取る側。相手が入ってくるのを待って、届いたら渡す */
+export function receive(code: string, handlers: ReceiveHandlers): Session {
+  const room = open(code);
+  const action = room.makeAction<Book[]>(NAMESPACE);
+
+  room.onPeerJoin = () => handlers.onPeer();
+  action.onReceiveProgress = (percent) =>
+    handlers.onProgress(Math.round(percent * 100));
+  action.onMessage = (books) => handlers.onDone(books);
+
+  return { close: () => void room.leave() };
 }
