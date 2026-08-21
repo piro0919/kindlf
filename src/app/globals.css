@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 @theme {
+  --header-height: 3.5rem;
+
   --color-bg: #faf8f5;
   --color-fg: #1c1a17;
   --color-muted: #8a8279;
@@ -20,10 +22,9 @@
 
 @layer base {
   body {
+    padding-top: var(--header-height);
     background: var(--color-bg);
     color: var(--color-fg);
-    font-family:
-      -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
     -webkit-font-smoothing: antialiased;
   }
 
