@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { ImportBooks } from "./ImportBooks";
 import { TransferBooks } from "./TransferBooks";
@@ -13,6 +14,10 @@ export function Settings() {
       <h1 className="text-2xl font-bold">設定</h1>
       <ImportBooks reloadKey={reloadKey} />
       <TransferBooks onChanged={() => setReloadKey((n) => n + 1)} />
+      {/* 飛び先を決めるための実験台。決まったら消す */}
+      <Link href="/opentest" className="text-xs text-muted underline">
+        本の開き方を試す
+      </Link>
     </div>
   );
 }
