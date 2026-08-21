@@ -55,7 +55,8 @@ partway through both stay near the top.
 ### Importing from Amazon
 
 Amazon will hand you your own data if you ask. Go to **Request My Data**, pick
-Kindle, and wait — mine took about a month. Then:
+Kindle, and wait. The confirmation screen says a month; mine landed the next
+day. Then:
 
 ```bash
 python3 scripts/import-ownership.py ~/Downloads/Kindle.zip
@@ -79,10 +80,15 @@ Authors are not in the disclosure data, so `author` comes out empty.
 
 ### Keeping up with new purchases
 
-Unsolved. The disclosure request is a one-time snapshot and says nothing about
-what you buy tomorrow. Order confirmation emails carry both the title and a
-link with the ASIN, and Amazon sent those to you, so parsing your own inbox
-looks like the clean way in. Not built yet.
+Ask again. Each disclosure request is a snapshot, but one arriving in a day or
+two is quick enough to treat as a refresh: file a request when you think of it,
+run the importer over the new zip, load it on your devices. Run it monthly and
+the shelf is never more than a few days behind, which is close enough for a
+sort order built on what you bought and read recently.
+
+Nothing automates this, and nothing needs to. Parsing the order confirmation
+emails Amazon sends you would close the last few days of lag, at the cost of a
+mail integration nobody asked for.
 
 ## Covers
 
@@ -115,8 +121,8 @@ script writes the PNG pixels directly.
   writes into `public/`, which only helps while you run it locally. Picking a
   `books.json` through a file input and storing it in IndexedDB is the next
   thing to build.
-- Nothing follows your new purchases. The disclosure request is a one-time
-  snapshot; ask again and you wait another month.
+- New purchases only show up when you file another disclosure request and
+  import the result. There is no automatic sync.
 - Search, sorting options and series grouping are not in the UI. Series
   grouping by title exists in the history, at `Rebuild the shelf on Next.js`.
 - Opening a book points at `https://read.amazon.co.jp/?asin={ASIN}`. Whether
