@@ -30,6 +30,9 @@
 /node_modules
 /out/
 /public/books.json
+/public/robots.txt
+/public/sitemap-0.xml
+/public/sitemap.xml
 /public/sw.js
 /public/sw.js.map
 next-env.d.ts
