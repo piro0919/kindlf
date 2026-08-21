@@ -1,0 +1,2 @@
+# 蔵書データは端末の中だけに置く。CLI からの配置は .gitignore を見ないので、ここにも書く
+public/books.json
