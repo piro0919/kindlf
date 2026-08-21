@@ -67,9 +67,11 @@ day. What arrives is `Kindle.zip` — hand that straight to the settings screen
 and the app reads it in place. 45 MB and 15,563 files went through in under a
 second, and nothing leaves the browser.
 
-Inside the zip, `Digital.Content.Ownership/` holds one JSON file per title, and
+Inside the zip, `Digital.Content.Ownership/` holds one JSON file per title,
 `Digital.Content.Whispersync/whispersync.csv` records when each one was last
-open — that survives across devices, which is where `lastRead` comes from. The
+open — that survives across devices, which is where `lastRead` comes from — and
+`Kindle.UnifiedLibraryIndex/…/CustomerGenres` carries a genre per ASIN, which is
+how a book is marked as manga. The
 app keeps the ones where `resourceType` is `KindleEBook`, `originType` is
 `Purchase`, and `rightStatus` is `Active` — so samples, Kindle Unlimited, Prime
 Reading, dictionaries and apps all drop out. A title can carry several rights
@@ -105,6 +107,15 @@ Nothing automates this, and nothing needs to. Parsing the order confirmation
 emails Amazon sends you would close the last few days of lag, at the cost of a
 mail integration nobody asked for.
 
+## Where a book opens
+
+Manga read better at `read.amazon.co.jp/manga/{ASIN}`, but sending a text book
+there fails, so the two need telling apart. Neither the file format nor
+`resourceType` does it — a text book and a manga can both be `YJBinary` and
+`KindleEBook`. The genre does: anything filed under マンガ or コミック goes to
+`/manga/`, everything else to `?asin=`, which opens any book. 1,977 of my 2,039
+land on the manga side. See `openUrl` in `src/lib/books.ts`.
+
 ## Covers
 
 `https://m.media-amazon.com/images/P/{ASIN}.09.LZZZZZZZ.jpg` returns the
@@ -136,10 +147,9 @@ script writes the PNG pixels directly.
   import the result. There is no automatic sync.
 - Search, sorting options and series grouping are not in the UI. Series
   grouping by title exists in the history, at `Rebuild the shelf on Next.js`.
-- Opening a book points at `https://read.amazon.co.jp/?asin={ASIN}`. Whether
-  that hands off to an installed Kindle app or just opens the web reader has
-  not been checked on any platform — swap `openUrl` in `src/lib/books.ts` if it
-  misbehaves.
+- The Kindle app is out of reach. On Android none of five https forms nor two
+  `intent://` forms hand a book over; the intents bounce to the Play Store. iOS
+  is untested. Books therefore open in the web reader.
 - The importer only knows about the `.co.jp` disclosure layout. Other
   marketplaces may name things differently.
 

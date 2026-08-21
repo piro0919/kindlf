@@ -8,6 +8,8 @@ export type Book = {
   acquired: string;
   /** 最後に開いた日。持っていない本もある */
   lastRead: string;
+  /** 漫画か。開示データのジャンルから決める。飛び先を分けるのに使う */
+  manga: boolean;
 };
 
 const KEY = "books";
@@ -21,9 +23,18 @@ export function coverUrl(asin: string): string {
   return `https://m.media-amazon.com/images/P/${asin}.09.LZZZZZZZ.jpg`;
 }
 
-// Kindle アプリに渡るかは未検証。駄目ならここを差し替える
-export function openUrl(asin: string): string {
-  return `https://read.amazon.co.jp/?asin=${asin}`;
+/**
+ * Web リーダーの入り口。Android では Kindle アプリに渡せない。
+ * https の5通りも intent:// の2通りも駄目で、intent は Play ストアに飛ばされる。
+ *
+ * 漫画は `/manga/` のほうが読みやすい。ただし文字ものをそこへ送ると開けないので、
+ * 開示データのジャンルで振り分ける。判断がつかない本は `?asin=` に寄せる。
+ * こちらはどの本でも開くことを実機で確認している。
+ */
+export function openUrl(book: Pick<Book, "asin" | "manga">): string {
+  return book.manga
+    ? `https://read.amazon.co.jp/manga/${book.asin}`
+    : `https://read.amazon.co.jp/?asin=${book.asin}`;
 }
 
 export function sortBooks(books: Book[]): Book[] {
@@ -50,6 +61,7 @@ export function parseBooks(input: unknown): Book[] {
         author: typeof r.author === "string" ? r.author : "",
         acquired: typeof r.acquired === "string" ? r.acquired : "",
         lastRead: typeof r.lastRead === "string" ? r.lastRead : "",
+        manga: r.manga === true,
       },
     ];
   });

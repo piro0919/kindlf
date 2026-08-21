@@ -8,6 +8,7 @@ import { sortBooks, type Book } from "./books";
  *
  *   Digital.Content.Ownership/*.json  1冊1ファイルの所有記録
  *   Digital.Content.Whispersync/whispersync.csv  最後に開いた日時
+ *   Kindle.UnifiedLibraryIndex/.../CustomerGenres  ジャンル
  *
  * scripts/import-ownership.py と同じ絞り込みをする。片方だけ直すと
  * 手元で作った books.json と結果がずれるので、条件は揃えておくこと。
@@ -15,6 +16,15 @@ import { sortBooks, type Book } from "./books";
 
 const OWNERSHIP = "Digital.Content.Ownership/";
 const WHISPERSYNC = "Digital.Content.Whispersync/whispersync.csv";
+const GENRES =
+  "Kindle.UnifiedLibraryIndex/datasets/Kindle.UnifiedLibraryIndex.CustomerGenres.3.1/" +
+  "Kindle.UnifiedLibraryIndex.CustomerGenres.3.1.csv";
+
+/**
+ * 漫画とみなすジャンル。「コミック・ラノベ・BL」は大きな括りで、
+ * 中にラノベも含みうるが、手元の546冊はすべて漫画だった。
+ */
+const MANGA_GENRE = /マンガ|コミック/;
 
 const WANT_TYPE = "KindleEBook";
 const WANT_ORIGIN = "Purchase"; // Kindle Unlimited と Prime は読み終われば権利が消える
@@ -22,6 +32,18 @@ const WANT_STATUS = "Active";
 
 /** 書名の末尾に付く言語表記 */
 const TRAILING = /\s*\((?:Japanese|English|German|French|Spanish) Edition\)\s*$/;
+
+/** 引用符の中にカンマを含む列があるので、素朴な分割はしない */
+function cells(row: string): string[] {
+  return (row.match(/("[^"]*"|[^,]*)/g) ?? [])
+    .filter((_, i) => i % 2 === 0)
+    .map((cell) => cell.replace(/^"|"$/g, ""));
+}
+
+/** 見出しの列名。ファイルによって引用符が付いたり付かなかったりする */
+function columns(row: string): string[] {
+  return cells(row.replace(/^\ufeff/, ""));
+}
 
 type Ownership = {
   resource?: { resourceType?: string; ASIN?: string; "Product Name"?: string };
@@ -56,7 +78,33 @@ function lastReadOf(csv: string): Map<string, string> {
   return seen;
 }
 
-function pick(record: Ownership, lastRead: Map<string, string>): Book | null {
+/** ASIN → 漫画かどうか */
+function mangaOf(csv: string): Set<string> {
+  const rows = csv.split(/\r?\n/);
+  const header = columns(rows[0] ?? "");
+  const asinAt = header.indexOf("ASIN");
+  const genreAt = header.indexOf("Genre");
+  const manga = new Set<string>();
+
+  if (asinAt < 0 || genreAt < 0) return manga;
+
+  for (const row of rows.slice(1)) {
+    const cell = cells(row);
+    const asin = cell[asinAt] ?? "";
+
+    if (asin && asin !== "Not Available" && MANGA_GENRE.test(cell[genreAt] ?? "")) {
+      manga.add(asin);
+    }
+  }
+
+  return manga;
+}
+
+function pick(
+  record: Ownership,
+  lastRead: Map<string, string>,
+  manga: Set<string>,
+): Book | null {
   const resource = record.resource;
 
   if (resource?.resourceType !== WANT_TYPE) return null;
@@ -75,6 +123,7 @@ function pick(record: Ownership, lastRead: Map<string, string>): Book | null {
       author: "", // 開示データに著者は入っていない
       acquired: right.acquiredDate ?? "",
       lastRead: lastRead.get(asin) ?? "",
+      manga: manga.has(asin),
     };
   }
 
@@ -90,7 +139,8 @@ function open(file: File): Promise<Unzipped> {
         {
           filter: ({ name }) =>
             (name.startsWith(OWNERSHIP) && name.endsWith(".json")) ||
-            name === WHISPERSYNC,
+            name === WHISPERSYNC ||
+            name === GENRES,
         },
         (error, unzipped) =>
           error ? reject(new Error("zip を開けませんでした")) : resolve(unzipped),
@@ -108,7 +158,12 @@ export async function booksFromZip(
   const decoder = new TextDecoder();
 
   const whispersync = unzipped[WHISPERSYNC];
-  const lastRead = whispersync ? lastReadOf(decoder.decode(whispersync)) : new Map();
+  const lastRead = whispersync
+    ? lastReadOf(decoder.decode(whispersync))
+    : new Map<string, string>();
+
+  const genres = unzipped[GENRES];
+  const manga = genres ? mangaOf(decoder.decode(genres)) : new Set<string>();
 
   const owned = names.filter((name) => name.startsWith(OWNERSHIP));
 
@@ -123,6 +178,7 @@ export async function booksFromZip(
       const book = pick(
         JSON.parse(decoder.decode(unzipped[name])) as Ownership,
         lastRead,
+        manga,
       );
 
       if (book && !found.has(book.asin)) found.set(book.asin, book);

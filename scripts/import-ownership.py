@@ -1,7 +1,8 @@
 """Amazonのデータ開示から books.json を作る。
 
 購入した本の一覧は Digital.Content.Ownership、最後に開いた日時は
-Digital.Content.Whispersync/whispersync.csv から拾う。
+Digital.Content.Whispersync/whispersync.csv、漫画かどうかは
+Kindle.UnifiedLibraryIndex の CustomerGenres から拾う。
 
 使い方:
     python3 scripts/import-ownership.py ~/Downloads/Kindle.zip
@@ -10,6 +11,15 @@ zip でもディレクトリでも受ける。購入して権利が生きてい�
 サンプル・Kindle Unlimited・Prime Reading・辞書・アプリは落とす。
 """
 import csv, json, os, re, sys, zipfile, tempfile, shutil
+
+GENRES = os.path.join(
+    'Kindle.UnifiedLibraryIndex', 'datasets',
+    'Kindle.UnifiedLibraryIndex.CustomerGenres.3.1',
+    'Kindle.UnifiedLibraryIndex.CustomerGenres.3.1.csv',
+)
+
+# 「コミック・ラノベ・BL」は大きな括りでラノベも含みうるが、手元の546冊は全部漫画だった
+MANGA_GENRE = re.compile(r'マンガ|コミック')
 
 WANT_TYPE = 'KindleEBook'
 WANT_ORIGIN = {'Purchase'}          # KindleUnlimited と Prime は読み終われば権利が消える
@@ -35,6 +45,21 @@ def last_read(root):
             if d and d != 'Not Available' and d > seen.get(asin, ''):
                 seen[asin] = d
     return seen
+
+
+def manga_asins(root):
+    """漫画とみなす ASIN。Web リーダーの飛び先を分けるのに使う。"""
+    path = os.path.join(root, GENRES)
+    if not os.path.isfile(path):
+        return set()
+    found = set()
+    with open(path, encoding='utf-8-sig') as f:
+        for row in csv.DictReader(f):
+            asin = row.get('ASIN')
+            genre = row.get('Genre') or ''
+            if asin and asin != 'Not Available' and MANGA_GENRE.search(genre):
+                found.add(asin)
+    return found
 
 
 def records(root):
@@ -84,6 +109,7 @@ def main():
             root = src
 
         opened = last_read(root)
+        manga = manga_asins(root)
         seen = {}
         total = 0
         for j in records(root):
@@ -91,6 +117,7 @@ def main():
             b = pick(j)
             if b and b['asin'] not in seen:
                 b['lastRead'] = opened.get(b['asin'], '')
+                b['manga'] = b['asin'] in manga
                 seen[b['asin']] = b
 
         # 買った日と最後に開いた日の、新しいほうで並べる
@@ -100,8 +127,9 @@ def main():
         with open('books.json', 'w', encoding='utf-8') as f:
             json.dump(books, f, ensure_ascii=False, indent=1)
         with_read = sum(1 for b in books if b['lastRead'])
+        as_manga = sum(1 for b in books if b['manga'])
         print(f'{total} 件を読み、{len(books)} 冊を books.json に書き出しました'
-              f'（うち {with_read} 冊に閲覧日あり）')
+              f'（閲覧日あり {with_read} 冊、漫画 {as_manga} 冊）')
     finally:
         if tmp:
             shutil.rmtree(tmp, ignore_errors=True)
