@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Serwist が書き出す成果物。手で直す対象ではない
+    "public/sw.js",
   ]),
 ]);
 
