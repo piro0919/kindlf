@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { MdOutlineFileUpload } from "react-icons/md";
 import { clearBooks, parseBooks, saveBooks, storedBooks } from "@/lib/books";
 
 type Status =
@@ -13,6 +14,7 @@ type Status =
 export function ImportBooks() {
   const [count, setCount] = useState<number | null>(null);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+  const [dragging, setDragging] = useState(false);
   const input = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -52,62 +54,84 @@ export function ImportBooks() {
   }
 
   return (
-    <section className="flex flex-col items-start gap-4">
-      <div>
-        <h2 className="text-base font-bold">蔵書データ</h2>
-        <p className="mt-1 text-sm text-muted">
-          {count === null
-            ? "\u00a0"
-            : count > 0
-              ? `${count.toLocaleString()} 冊がこの端末に入っています`
-              : "まだ何も入っていません"}
-        </p>
+    <section className="flex flex-col gap-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-[13px] font-bold tracking-wide text-muted">蔵書データ</h2>
+        {count !== null && count > 0 && (
+          <span className="text-[13px] text-muted tabular-nums">
+            {count.toLocaleString()} 冊
+          </span>
+        )}
       </div>
 
-      {/*
-        input を label で包む。iOS のホーム画面から起動した状態では
-        button から click() を呼んでも開かないことがあるため、
-        利用者の操作が直接 input に届く形にしている
-      */}
-      <label className="cursor-pointer rounded-full bg-accent px-4 py-2 text-sm font-bold text-bg">
-        <input
-          ref={input}
-          type="file"
-          accept="application/json,.json"
-          className="sr-only"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
+      <div className="overflow-hidden rounded-2xl border border-line bg-black/3 dark:bg-white/4">
+        {/*
+          input を label で包む。iOS のホーム画面から起動した状態では
+          button から click() を呼んでも開かないことがあるため、
+          利用者の操作が直接 input に届く形にしている
+        */}
+        <label
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            const file = e.dataTransfer.files?.[0];
             if (file) void handle(file);
           }}
-        />
-        {count ? "読み込み直す" : "books.json を選ぶ"}
-      </label>
-
-      {status.kind === "reading" && <p className="text-sm text-muted">読み込み中…</p>}
-      {status.kind === "done" && (
-        <p className="text-sm">
-          {status.count.toLocaleString()} 冊を取り込みました
-        </p>
-      )}
-      {status.kind === "error" && (
-        <p className="text-sm text-accent">{status.message}</p>
-      )}
-
-      {!!count && (
-        <button
-          type="button"
-          className="cursor-pointer rounded-full border border-line px-4 py-2 text-sm text-muted"
-          onClick={() => {
-            void (async () => {
-              await clearBooks();
-              setCount(0);
-              setStatus({ kind: "idle" });
-            })();
-          }}
+          className={`m-3 flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed px-5 py-8 text-center transition-colors ${
+            dragging ? "border-accent bg-accent/8" : "border-line"
+          }`}
         >
-          この端末から消す
-        </button>
-      )}
+          <input
+            ref={input}
+            type="file"
+            accept="application/json,.json"
+            className="sr-only"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void handle(file);
+            }}
+          />
+          <MdOutlineFileUpload className="text-2xl text-muted" />
+          <span className="text-sm font-bold">
+            {status.kind === "reading" ? "読み込み中…" : "books.json を選ぶ"}
+          </span>
+        </label>
+
+        {status.kind === "done" && (
+          <p className="border-t border-line px-4 py-3 text-sm">
+            {status.count.toLocaleString()} 冊を取り込みました
+          </p>
+        )}
+        {status.kind === "error" && (
+          <p className="border-t border-line px-4 py-3 text-sm text-accent">
+            {status.message}
+          </p>
+        )}
+
+        {!!count && (
+          <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3">
+            <span className="text-sm text-muted">この端末から消す</span>
+            <button
+              type="button"
+              className="cursor-pointer rounded-full border border-line px-3 py-1.5 text-[13px]"
+              onClick={() => {
+                void (async () => {
+                  await clearBooks();
+                  setCount(0);
+                  setStatus({ kind: "idle" });
+                })();
+              }}
+            >
+              消す
+            </button>
+          </div>
+        )}
+      </div>
     </section>
   );
 }

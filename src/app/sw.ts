@@ -18,13 +18,15 @@ declare global {
 declare const self: ServiceWorkerGlobalScope;
 
 /**
- * 画面そのものの控え。ネットワーク優先で、遅いときは4秒で控えに切り替える。
- * 蔵書は端末の中にあるので、画面さえ出ればオフラインでも本棚は機能する。
+ * 画面そのものの控え。ネットワーク優先。
+ * 打ち切りを短くすると、遅いだけの回線で控えに落ちる。画面は前もって
+ * 控えてあるので、待たせるより控えを出すほうが速い場面もあるが、
+ * 内容が古くなるのを避けたいので10秒待つ。
  */
 const documentCache = {
   handler: new NetworkFirst({
     cacheName: "pages",
-    networkTimeoutSeconds: 4,
+    networkTimeoutSeconds: 10,
     plugins: [new ExpirationPlugin({ maxAgeSeconds: 24 * 60 * 60, maxEntries: 16 })],
   }),
   matcher: ({ request, sameOrigin }: { request: Request; sameOrigin: boolean }): boolean =>

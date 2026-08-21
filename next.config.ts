@@ -7,13 +7,19 @@ const offlineRevision = Date.now().toString(36);
 
 /**
  * App Router のページは既定の一覧に入らない。
- * オフライン画面だけは前もって控えておかないと、いざというときに出せない。
+ * Kindlf の画面は静的で、中身は端末の中にある。だから画面ごと前もって控える。
+ * 控えが無いまま通信に失敗すると、繋がっていてもオフライン画面に落ちてしまう。
  */
 type ManifestTransform = NonNullable<PluginOptions["manifestTransforms"]>[number];
 
+const PRECACHED_PAGES = ["/", "/settings", "/~offline"];
+
 const manifestTransforms: ManifestTransform[] = [
   async (entries) => ({
-    manifest: [...entries, { revision: offlineRevision, size: 0, url: "/~offline" }],
+    manifest: [
+      ...entries,
+      ...PRECACHED_PAGES.map((url) => ({ revision: offlineRevision, size: 0, url })),
+    ],
     warnings: [],
   }),
 ];

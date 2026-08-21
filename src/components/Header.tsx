@@ -15,6 +15,8 @@ export function Header() {
           width={180}
           height={180}
           priority
+          // 最適化を通すと /_next/image が挟まり、控えに無いぶんオフラインで欠ける
+          unoptimized
           className="size-8 flex-none rounded-[0.55rem] border border-line object-cover"
         />
         <span className={`${display.className} text-[1.75rem] leading-none`}>
