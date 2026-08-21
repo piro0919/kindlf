@@ -1,8 +1,8 @@
-# Kindle Shelf
+# Kindlf
 
-A small PWA that lays out your Kindle library the way you want it. Add it to
-the iPad home screen and it opens full screen, with no Safari toolbar in the
-way.
+Kindle plus shelf. A small PWA that lays out your Kindle library the way you
+want it. Add it to the iPad home screen and it opens full screen, with no
+Safari toolbar in the way.
 
 The Kindle app changed its library UI and became harder to read. This does not
 try to fix that app, and it does not try to wrap the Kindle web reader either
