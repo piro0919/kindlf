@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { MdSettings } from "react-icons/md";
 import { display } from "@/lib/fonts";
 import { InstallButton } from "./InstallButton";
 
@@ -23,6 +24,13 @@ export function Header() {
       {/* 題字の右端。出るものが無ければ何も見えない */}
       <div className="ms-auto flex items-center gap-2">
         <InstallButton />
+        <Link
+          href="/settings"
+          aria-label="設定"
+          className="flex size-9 items-center justify-center rounded-full text-muted"
+        >
+          <MdSettings className="text-xl" />
+        </Link>
       </div>
     </header>
   );
