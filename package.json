@@ -25,6 +25,7 @@
     "use-pwa": "^3.0.3"
   },
   "devDependencies": {
+    "@piro0919/eslint-config": "github:piro0919/eslint-config#v1.0.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
