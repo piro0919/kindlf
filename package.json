@@ -15,14 +15,14 @@
     "@vercel/analytics": "^2.0.1",
     "fflate": "^0.8.3",
     "idb-keyval": "^6.3.0",
-    "next": "16.3.1",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
+    "next": "16.4.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "react-icons": "^5.7.0",
     "react-ios-pwa-prompt": "^2.0.6",
     "serwist": "^9.5.12",
-    "trystero": "^0.25.3",
-    "use-pwa": "^3.0.3"
+    "trystero": "^0.26.0",
+    "use-pwa": "^3.1.0"
   },
   "devDependencies": {
     "@piro0919/eslint-config": "github:piro0919/eslint-config#v1.0.0",
