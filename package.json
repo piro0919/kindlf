@@ -22,7 +22,7 @@
     "react-ios-pwa-prompt": "^2.0.6",
     "serwist": "^9.5.12",
     "trystero": "^0.25.3",
-    "use-pwa": "^3.0.3"
+    "use-pwa": "^4.0.0"
   },
   "devDependencies": {
     "@piro0919/eslint-config": "github:piro0919/eslint-config#v1.0.0",
@@ -30,7 +30,7 @@
     "@types/node": "^20.19.43",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "eslint": "^9.39.5",
+    "eslint": "^10.13.0",
     "eslint-config-next": "16.4.0",
     "next-sitemap": "^4.2.3",
     "tailwindcss": "^4.3.3",
