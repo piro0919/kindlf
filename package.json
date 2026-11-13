@@ -11,7 +11,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@serwist/next": "^9.5.12",
+    "@serwist/next": "^9.5.13",
     "@vercel/analytics": "^2.0.1",
     "fflate": "^0.8.3",
     "idb-keyval": "^6.3.0",
@@ -20,7 +20,7 @@
     "react-dom": "19.2.8",
     "react-icons": "^5.7.0",
     "react-ios-pwa-prompt": "^2.0.6",
-    "serwist": "^9.5.12",
+    "serwist": "^9.5.13",
     "trystero": "^0.25.3",
     "use-pwa": "^3.0.3"
   },
