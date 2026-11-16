@@ -69,7 +69,7 @@ export function send(
   const room = open(code);
   const action = room.makeAction<Book[]>(NAMESPACE);
 
-  room.onPeerJoin = (peerId) => {
+  room.onPeerJoin(({ peerId }) => {
     handlers.onPeer();
 
     // 分割も流量調整も Trystero 側がやる
@@ -80,7 +80,7 @@ export function send(
       })
       .then(() => handlers.onDone())
       .catch(() => handlers.onError("送れませんでした"));
-  };
+  });
 
   return { close: () => void room.leave() };
 }
@@ -96,10 +96,11 @@ export function receive(code: string, handlers: ReceiveHandlers): Session {
   const room = open(code);
   const action = room.makeAction<Book[]>(NAMESPACE);
 
-  room.onPeerJoin = () => handlers.onPeer();
-  action.onReceiveProgress = (percent) =>
-    handlers.onProgress(Math.round(percent * 100));
-  action.onMessage = (books) => handlers.onDone(books);
+  room.onPeerJoin(() => handlers.onPeer());
+  action.onReceiveProgress((percent) =>
+    handlers.onProgress(Math.round(percent * 100)),
+  );
+  action.onMessage((books) => handlers.onDone(books));
 
   return { close: () => void room.leave() };
 }
